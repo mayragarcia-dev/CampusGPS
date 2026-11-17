@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -15,6 +16,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -35,9 +37,10 @@ fun PantallaMapa(viewModel: MapaViewModel) {
     val context = LocalContext.current
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) viewModel.buscar() else viewModel.permisoDenegado()
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { resultados ->
+        if (resultados.values.any { it }) viewModel.buscar()
+        else viewModel.permisoDenegado()
     }
 
     Scaffold(topBar = {
@@ -56,11 +59,24 @@ fun PantallaMapa(viewModel: MapaViewModel) {
         ) {
             Button(
                 onClick = {
-                    val permission = Manifest.permission.ACCESS_FINE_LOCATION
-                    if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
+                    val tienePermisoPreciso = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
+                    val tienePermisoAproximado = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
+
+                    if (tienePermisoPreciso || tienePermisoAproximado) {
                         viewModel.buscar()
                     } else {
-                        permissionLauncher.launch(permission)
+                        permissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
+                        )
                     }
                 },
                 enabled = estado !is UbicacionUi.Buscando
@@ -77,7 +93,17 @@ fun PantallaMapa(viewModel: MapaViewModel) {
                     Text("Latitud: ${current.posicion.latitud}")
                     Text("Longitud: ${current.posicion.longitud}")
                 }
-                is UbicacionUi.Error -> Text(current.mensaje)
+                is UbicacionUi.Error -> Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text(
+                        text = current.mensaje,
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
             }
         }
     }
