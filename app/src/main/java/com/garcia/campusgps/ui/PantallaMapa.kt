@@ -4,15 +4,22 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -26,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -39,10 +47,15 @@ import com.garcia.campusgps.viewmodel.MapaViewModel
 @Composable
 fun PantallaMapa(viewModel: MapaViewModel) {
     val context = LocalContext.current
+    val alturaCompacta = LocalConfiguration.current.screenHeightDp < 560
     val estado by viewModel.estado.collectAsStateWithLifecycle()
-    val lugares by viewModel.lugares.collectAsStateWithLifecycle()
+    val lugares by viewModel.lugaresVisibles.collectAsStateWithLifecycle()
+    val categoriaSeleccionada by viewModel.categoriaSeleccionada.collectAsStateWithLifecycle()
     val seleccionado by viewModel.seleccionado.collectAsStateWithLifecycle()
     val masCercano by viewModel.masCercano.collectAsStateWithLifecycle()
+    val masCercanoVisible = masCercano?.let { cercano ->
+        lugares.firstOrNull { it.lugar.id == cercano.id }
+    }
     var solicitudReencuadre by remember { mutableIntStateOf(0) }
     val error = estado as? UbicacionUi.Error
 
@@ -79,8 +92,11 @@ fun PantallaMapa(viewModel: MapaViewModel) {
             )
         )
     }) { padding ->
+        val desplazamientoVertical = if (alturaCompacta) {
+            Modifier.verticalScroll(rememberScrollState())
+        } else Modifier
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier.fillMaxSize().padding(padding).then(desplazamientoVertical),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             if (error == null) {
@@ -88,9 +104,11 @@ fun PantallaMapa(viewModel: MapaViewModel) {
                     estado = estado,
                     lugares = lugares,
                     seleccionado = seleccionado,
-                    masCercanoId = masCercano?.id,
+                    masCercanoId = masCercanoVisible?.lugar?.id,
                     solicitudReencuadre = solicitudReencuadre,
-                    modifier = Modifier.weight(1f)
+                    modifier = if (alturaCompacta) {
+                        Modifier.fillMaxWidth().height(180.dp)
+                    } else Modifier.weight(1f)
                 )
             }
 
@@ -115,17 +133,32 @@ fun PantallaMapa(viewModel: MapaViewModel) {
             }
             if (error == null) {
                 OutlinedButton(
-                    enabled = masCercano != null,
-                    onClick = { masCercano?.let { seleccionarLugar(it.id) } }
+                    enabled = masCercanoVisible != null,
+                    onClick = { masCercanoVisible?.let { seleccionarLugar(it.lugar.id) } }
                 ) {
                     Text("Ir al más cercano")
                 }
-                masCercano?.let { lugar ->
-                    lugares.firstOrNull { it.lugar.id == lugar.id }?.metros?.let { metros ->
+                masCercanoVisible?.let { (lugar, metros) ->
+                    if (metros != null) {
                         Text(
                             text = "Más cercano: ${lugar.nombre} (${formatearDistancia(metros)})",
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .selectableGroup()
+                        .padding(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    viewModel.categorias.forEach { categoria ->
+                        FilterChip(
+                            selected = categoria == categoriaSeleccionada,
+                            onClick = { viewModel.alternarCategoria(categoria) },
+                            label = { Text(categoria) }
                         )
                     }
                 }

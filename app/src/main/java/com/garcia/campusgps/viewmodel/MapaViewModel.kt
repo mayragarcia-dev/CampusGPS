@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -42,13 +43,30 @@ class MapaViewModel(
 
     private val lugaresIniciales = lugaresRepo.obtenerLugares().map { LugarConDistancia(it, null) }
     private val _lugares = MutableStateFlow(lugaresIniciales)
-    val lugares = _lugares.asStateFlow()
-    val masCercano: StateFlow<Lugar?> = lugares
+
+    val categorias = lugaresIniciales.map { it.lugar.categoria }.distinct()
+    private val _categoriaSeleccionada = MutableStateFlow<String?>(null)
+    val categoriaSeleccionada = _categoriaSeleccionada.asStateFlow()
+
+    val lugaresVisibles = combine(_lugares, categoriaSeleccionada) { lista, categoria ->
+        if (categoria == null) lista else lista.filter { it.lugar.categoria == categoria }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), lugaresIniciales)
+
+    val masCercano: StateFlow<Lugar?> = lugaresVisibles
         .map { lista -> lista.firstOrNull { it.metros != null }?.lugar }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val _seleccionado = MutableStateFlow<Int?>(null)
     val seleccionado = _seleccionado.asStateFlow()
+
+    fun alternarCategoria(categoria: String) {
+        val nuevaCategoria = categoria.takeUnless { it == _categoriaSeleccionada.value }
+        val lugarSeleccionado = lugaresIniciales.firstOrNull { it.lugar.id == _seleccionado.value }
+        if (nuevaCategoria != null && lugarSeleccionado?.lugar?.categoria != nuevaCategoria) {
+            seleccionar(null)
+        }
+        _categoriaSeleccionada.value = nuevaCategoria
+    }
 
     fun seleccionar(id: Int?) {
         _seleccionado.value = id
