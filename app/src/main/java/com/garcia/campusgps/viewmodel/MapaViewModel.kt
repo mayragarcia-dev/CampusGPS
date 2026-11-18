@@ -5,13 +5,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.garcia.campusgps.data.LugaresRepository
 import com.garcia.campusgps.data.UbicacionRepository
+import com.garcia.campusgps.model.Lugar
 import com.garcia.campusgps.model.LugarConDistancia
 import com.garcia.campusgps.model.Posicion
 import com.garcia.campusgps.model.UbicacionUi
 import com.garcia.campusgps.util.distanciaMetros
 import com.garcia.campusgps.util.formatearDistancia
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 private const val ETIQUETA_DISTANCIAS = "CampusGPSDistancias"
@@ -27,6 +32,9 @@ class MapaViewModel(
         lugaresRepo.obtenerLugares().map { LugarConDistancia(it, null) }
     )
     val lugares = _lugares.asStateFlow()
+    val masCercano: StateFlow<Lugar?> = lugares
+        .map { lista -> lista.firstOrNull { it.metros != null }?.lugar }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val _seleccionado = MutableStateFlow<Int?>(null)
     val seleccionado = _seleccionado.asStateFlow()

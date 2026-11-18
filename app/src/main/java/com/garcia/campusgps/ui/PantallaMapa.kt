@@ -14,6 +14,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -21,6 +22,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -28,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.garcia.campusgps.model.UbicacionUi
+import com.garcia.campusgps.util.formatearDistancia
 import com.garcia.campusgps.viewmodel.MapaViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,6 +42,14 @@ fun PantallaMapa(viewModel: MapaViewModel) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val lugares by viewModel.lugares.collectAsStateWithLifecycle()
     val seleccionado by viewModel.seleccionado.collectAsStateWithLifecycle()
+    val masCercano by viewModel.masCercano.collectAsStateWithLifecycle()
+    var solicitudReencuadre by remember { mutableIntStateOf(0) }
+
+    fun seleccionarLugar(id: Int) {
+        if (id == seleccionado) solicitudReencuadre++
+        viewModel.seleccionar(id)
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { resultados ->
@@ -61,6 +74,8 @@ fun PantallaMapa(viewModel: MapaViewModel) {
                 estado = estado,
                 lugares = lugares,
                 seleccionado = seleccionado,
+                masCercanoId = masCercano?.id,
+                solicitudReencuadre = solicitudReencuadre,
                 modifier = Modifier.weight(1f)
             )
 
@@ -113,10 +128,25 @@ fun PantallaMapa(viewModel: MapaViewModel) {
                     )
                 }
             }
+            OutlinedButton(
+                enabled = masCercano != null,
+                onClick = { masCercano?.let { seleccionarLugar(it.id) } }
+            ) {
+                Text("Ir al más cercano")
+            }
+            masCercano?.let { lugar ->
+                lugares.firstOrNull { it.lugar.id == lugar.id }?.metros?.let { metros ->
+                    Text(
+                        text = "Más cercano: ${lugar.nombre} (${formatearDistancia(metros)})",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
             ListaLugares(
                 lugares = lugares,
                 seleccionado = seleccionado,
-                onClick = viewModel::seleccionar,
+                onClick = ::seleccionarLugar,
                 modifier = Modifier.fillMaxWidth().height(220.dp)
             )
             Spacer(Modifier.height(12.dp))
