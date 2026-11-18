@@ -1,4 +1,11 @@
 package com.garcia.campusgps.util
 
-// [A] Se implementará en el paso indicado.
+import java.util.Locale
+import kotlin.math.roundToInt
+
+fun formatearDistancia(metros: Float): String = if (metros < 1_000f) {
+    "${metros.roundToInt()} m"
+} else {
+    String.format(Locale.ROOT, "%.1f km", metros / 1_000f)
+}
 

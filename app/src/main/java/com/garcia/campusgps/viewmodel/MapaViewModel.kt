@@ -1,14 +1,20 @@
 package com.garcia.campusgps.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.garcia.campusgps.data.LugaresRepository
 import com.garcia.campusgps.data.UbicacionRepository
 import com.garcia.campusgps.model.LugarConDistancia
+import com.garcia.campusgps.model.Posicion
 import com.garcia.campusgps.model.UbicacionUi
+import com.garcia.campusgps.util.distanciaMetros
+import com.garcia.campusgps.util.formatearDistancia
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+private const val ETIQUETA_DISTANCIAS = "CampusGPSDistancias"
 
 class MapaViewModel(
     private val ubicacionRepo: UbicacionRepository,
@@ -22,11 +28,28 @@ class MapaViewModel(
     )
     val lugares = _lugares.asStateFlow()
 
+    private fun actualizarDistancias(pos: Posicion) {
+        val ordenados = _lugares.value
+            .map { (lugar) -> LugarConDistancia(lugar, distanciaMetros(pos, lugar)) }
+            .sortedBy { it.metros }
+        _lugares.value = ordenados
+
+        if (Log.isLoggable(ETIQUETA_DISTANCIAS, Log.DEBUG)) {
+            val resumen = ordenados.joinToString { (lugar, metros) ->
+                "${lugar.nombre}: ${formatearDistancia(checkNotNull(metros))}"
+            }
+            Log.d(ETIQUETA_DISTANCIAS, resumen)
+        }
+    }
+
     fun buscar() {
         _estado.value = UbicacionUi.Buscando
         viewModelScope.launch {
             ubicacionRepo.obtenerPosicion()
-                .onSuccess { posicion -> _estado.value = UbicacionUi.Lista(posicion) }
+                .onSuccess { posicion ->
+                    actualizarDistancias(posicion)
+                    _estado.value = UbicacionUi.Lista(posicion)
+                }
                 .onFailure { error -> _estado.value = UbicacionUi.Error(mensajeDe(error)) }
         }
     }
