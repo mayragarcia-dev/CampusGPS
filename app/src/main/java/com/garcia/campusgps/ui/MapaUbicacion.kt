@@ -24,7 +24,7 @@ import com.google.maps.android.compose.rememberUpdatedMarkerState
 import com.garcia.campusgps.model.LugarConDistancia
 import com.garcia.campusgps.model.UbicacionUi
 
-private val centroCampusTecsup = LatLng(-12.04387, -76.95281)
+private val puntoBaseLima = LatLng(-12.0464, -77.0428)
 
 @Composable
 fun MapaUbicacion(
@@ -38,10 +38,10 @@ fun MapaUbicacion(
     modifier: Modifier = Modifier
 ) {
     val camara = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(centroCampusTecsup, 17f)
+        position = CameraPosition.fromLatLngZoom(puntoBaseLima, 12f)
     }
     val posicionActual = (estado as? UbicacionUi.Lista)?.posicion
-    val puntoActual = posicionActual?.let { LatLng(it.latitud, it.longitud) } ?: centroCampusTecsup
+    val puntoActual = posicionActual?.let { LatLng(it.latitud, it.longitud) } ?: puntoBaseLima
     val marcadorActual = rememberUpdatedMarkerState(position = puntoActual)
     val colorRadio = MaterialTheme.colorScheme.primary
     var mapaCargado by remember { mutableStateOf(false) }
@@ -115,4 +115,3 @@ fun MapaUbicacion(
         }
     }
 }
-
