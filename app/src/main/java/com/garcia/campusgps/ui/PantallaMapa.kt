@@ -16,7 +16,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -31,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.garcia.campusgps.model.TipoError
 import com.garcia.campusgps.model.UbicacionUi
 import com.garcia.campusgps.util.formatearDistancia
 import com.garcia.campusgps.viewmodel.MapaViewModel
@@ -44,6 +44,7 @@ fun PantallaMapa(viewModel: MapaViewModel) {
     val seleccionado by viewModel.seleccionado.collectAsStateWithLifecycle()
     val masCercano by viewModel.masCercano.collectAsStateWithLifecycle()
     var solicitudReencuadre by remember { mutableIntStateOf(0) }
+    val error = estado as? UbicacionUi.Error
 
     fun seleccionarLugar(id: Int) {
         if (id == seleccionado) solicitudReencuadre++
@@ -55,6 +56,18 @@ fun PantallaMapa(viewModel: MapaViewModel) {
     ) { resultados ->
         if (resultados.values.any { it }) viewModel.buscar()
         else viewModel.permisoDenegado()
+    }
+
+    fun solicitarUbicacion() {
+        val permisos = arrayOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+        if (permisos.any { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }) {
+            viewModel.buscar()
+        } else {
+            permissionLauncher.launch(permisos)
+        }
     }
 
     Scaffold(topBar = {
@@ -70,39 +83,21 @@ fun PantallaMapa(viewModel: MapaViewModel) {
             modifier = Modifier.fillMaxSize().padding(padding),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            MapaUbicacion(
-                estado = estado,
-                lugares = lugares,
-                seleccionado = seleccionado,
-                masCercanoId = masCercano?.id,
-                solicitudReencuadre = solicitudReencuadre,
-                modifier = Modifier.weight(1f)
-            )
+            if (error == null) {
+                MapaUbicacion(
+                    estado = estado,
+                    lugares = lugares,
+                    seleccionado = seleccionado,
+                    masCercanoId = masCercano?.id,
+                    solicitudReencuadre = solicitudReencuadre,
+                    modifier = Modifier.weight(1f)
+                )
+            }
 
             Button(
                 modifier = Modifier.padding(top = 12.dp),
-                onClick = {
-                    val tienePermisoPreciso = ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.ACCESS_FINE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED
-                    val tienePermisoAproximado = ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED
-
-                    if (tienePermisoPreciso || tienePermisoAproximado) {
-                        viewModel.buscar()
-                    } else {
-                        permissionLauncher.launch(
-                            arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION
-                            )
-                        )
-                    }
-                },
-                enabled = estado !is UbicacionUi.Buscando
+                onClick = ::solicitarUbicacion,
+                enabled = estado !is UbicacionUi.Buscando && error?.tipo != TipoError.SIN_PLAY_SERVICES
             ) {
                 Text(if (estado is UbicacionUi.Buscando) "Buscando…" else "Obtener mi ubicación")
             }
@@ -116,40 +111,32 @@ fun PantallaMapa(viewModel: MapaViewModel) {
                     Text("Latitud: ${current.posicion.latitud}")
                     Text("Longitud: ${current.posicion.longitud}")
                 }
-                is UbicacionUi.Error -> Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.errorContainer,
-                    shape = MaterialTheme.shapes.medium
+                is UbicacionUi.Error -> MensajeError(current, onReintentar = ::solicitarUbicacion)
+            }
+            if (error == null) {
+                OutlinedButton(
+                    enabled = masCercano != null,
+                    onClick = { masCercano?.let { seleccionarLugar(it.id) } }
                 ) {
-                    Text(
-                        text = current.mensaje,
-                        modifier = Modifier.padding(16.dp),
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
+                    Text("Ir al más cercano")
                 }
-            }
-            OutlinedButton(
-                enabled = masCercano != null,
-                onClick = { masCercano?.let { seleccionarLugar(it.id) } }
-            ) {
-                Text("Ir al más cercano")
-            }
-            masCercano?.let { lugar ->
-                lugares.firstOrNull { it.lugar.id == lugar.id }?.metros?.let { metros ->
-                    Text(
-                        text = "Más cercano: ${lugar.nombre} (${formatearDistancia(metros)})",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                masCercano?.let { lugar ->
+                    lugares.firstOrNull { it.lugar.id == lugar.id }?.metros?.let { metros ->
+                        Text(
+                            text = "Más cercano: ${lugar.nombre} (${formatearDistancia(metros)})",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
+                ListaLugares(
+                    lugares = lugares,
+                    seleccionado = seleccionado,
+                    onClick = ::seleccionarLugar,
+                    modifier = Modifier.fillMaxWidth().height(220.dp)
+                )
+                Spacer(Modifier.height(12.dp))
             }
-            ListaLugares(
-                lugares = lugares,
-                seleccionado = seleccionado,
-                onClick = ::seleccionarLugar,
-                modifier = Modifier.fillMaxWidth().height(220.dp)
-            )
-            Spacer(Modifier.height(12.dp))
         }
     }
 }
