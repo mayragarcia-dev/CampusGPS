@@ -28,6 +28,13 @@ class MapaViewModel(
     )
     val lugares = _lugares.asStateFlow()
 
+    private val _seleccionado = MutableStateFlow<Int?>(null)
+    val seleccionado = _seleccionado.asStateFlow()
+
+    fun seleccionar(id: Int?) {
+        _seleccionado.value = id
+    }
+
     private fun actualizarDistancias(pos: Posicion) {
         val ordenados = _lugares.value
             .map { (lugar) -> LugarConDistancia(lugar, distanciaMetros(pos, lugar)) }
@@ -44,6 +51,7 @@ class MapaViewModel(
 
     fun buscar() {
         _estado.value = UbicacionUi.Buscando
+        seleccionar(null)
         viewModelScope.launch {
             ubicacionRepo.obtenerPosicion()
                 .onSuccess { posicion ->

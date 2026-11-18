@@ -25,7 +25,6 @@ import com.garcia.campusgps.model.UbicacionUi
 private val centroCampusTecsup = LatLng(-12.04387, -76.95281)
 
 @Composable
-@Suppress("UNUSED_PARAMETER")
 fun MapaUbicacion(
     estado: UbicacionUi,
     lugares: List<LugarConDistancia>,
@@ -40,8 +39,8 @@ fun MapaUbicacion(
     val marcadorActual = rememberUpdatedMarkerState(position = puntoActual)
     var mapaCargado by remember { mutableStateOf(false) }
 
-    LaunchedEffect(posicionActual, mapaCargado) {
-        if (mapaCargado && posicionActual != null) {
+    LaunchedEffect(posicionActual, mapaCargado, seleccionado) {
+        if (mapaCargado && posicionActual != null && seleccionado == null) {
             camara.animate(
                 CameraUpdateFactory.newLatLngZoom(puntoActual, 16f),
                 durationMs = 1_000
@@ -67,12 +66,22 @@ fun MapaUbicacion(
         }
         lugares.forEach { (lugar) ->
             key(lugar.id) {
+                val marcador = rememberUpdatedMarkerState(LatLng(lugar.latitud, lugar.longitud))
                 Marker(
-                    state = rememberUpdatedMarkerState(LatLng(lugar.latitud, lugar.longitud)),
+                    state = marcador,
                     title = lugar.nombre,
                     snippet = lugar.categoria,
                     icon = iconoLugar
                 )
+                LaunchedEffect(seleccionado, mapaCargado) {
+                    if (mapaCargado && seleccionado == lugar.id) {
+                        camara.animate(
+                            CameraUpdateFactory.newLatLngZoom(marcador.position, 17f),
+                            durationMs = 750
+                        )
+                        marcador.showInfoWindow()
+                    }
+                }
             }
         }
 

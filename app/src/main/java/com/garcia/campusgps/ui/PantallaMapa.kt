@@ -36,6 +36,7 @@ fun PantallaMapa(viewModel: MapaViewModel) {
     val context = LocalContext.current
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val lugares by viewModel.lugares.collectAsStateWithLifecycle()
+    val seleccionado by viewModel.seleccionado.collectAsStateWithLifecycle()
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { resultados ->
@@ -59,7 +60,7 @@ fun PantallaMapa(viewModel: MapaViewModel) {
             MapaUbicacion(
                 estado = estado,
                 lugares = lugares,
-                seleccionado = null,
+                seleccionado = seleccionado,
                 modifier = Modifier.weight(1f)
             )
 
@@ -112,6 +113,12 @@ fun PantallaMapa(viewModel: MapaViewModel) {
                     )
                 }
             }
+            ListaLugares(
+                lugares = lugares,
+                seleccionado = seleccionado,
+                onClick = viewModel::seleccionar,
+                modifier = Modifier.fillMaxWidth().height(220.dp)
+            )
             Spacer(Modifier.height(12.dp))
         }
     }
