@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,6 +35,7 @@ import com.garcia.campusgps.viewmodel.MapaViewModel
 fun PantallaMapa(viewModel: MapaViewModel) {
     val context = LocalContext.current
     val estado by viewModel.estado.collectAsStateWithLifecycle()
+    val lugares by viewModel.lugares.collectAsStateWithLifecycle()
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { resultados ->
@@ -53,11 +53,18 @@ fun PantallaMapa(viewModel: MapaViewModel) {
         )
     }) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
+            modifier = Modifier.fillMaxSize().padding(padding),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
         ) {
+            MapaUbicacion(
+                estado = estado,
+                lugares = lugares,
+                seleccionado = null,
+                modifier = Modifier.weight(1f)
+            )
+
             Button(
+                modifier = Modifier.padding(top = 12.dp),
                 onClick = {
                     val tienePermisoPreciso = ContextCompat.checkSelfPermission(
                         context,
@@ -84,11 +91,11 @@ fun PantallaMapa(viewModel: MapaViewModel) {
                 Text(if (estado is UbicacionUi.Buscando) "Buscando…" else "Obtener mi ubicación")
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(8.dp))
 
             when (val current = estado) {
                 UbicacionUi.Inicial -> Text("Pulsa el botón para obtener tu ubicación")
-                UbicacionUi.Buscando -> CircularProgressIndicator()
+                UbicacionUi.Buscando -> CircularProgressIndicator(modifier = Modifier.padding(8.dp))
                 is UbicacionUi.Lista -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Latitud: ${current.posicion.latitud}")
                     Text("Longitud: ${current.posicion.longitud}")
@@ -105,6 +112,7 @@ fun PantallaMapa(viewModel: MapaViewModel) {
                     )
                 }
             }
+            Spacer(Modifier.height(12.dp))
         }
     }
 }
