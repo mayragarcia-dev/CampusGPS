@@ -52,12 +52,25 @@ class MapaViewModel(
         if (categoria == null) lista else lista.filter { it.lugar.categoria == categoria }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), lugaresIniciales)
 
+    val radiosDisponibles = listOf(100, 200, 500)
+    private val _radioMetros = MutableStateFlow(radiosDisponibles.first())
+    val radioMetros = _radioMetros.asStateFlow()
+    val lugaresDentroDelRadio = combine(lugaresVisibles, radioMetros) { lista, radio ->
+        lista.filter { lugar -> lugar.metros?.let { it <= radio } == true }
+            .map { it.lugar.id }
+            .toSet()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
     val masCercano: StateFlow<Lugar?> = lugaresVisibles
         .map { lista -> lista.firstOrNull { it.metros != null }?.lugar }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val _seleccionado = MutableStateFlow<Int?>(null)
     val seleccionado = _seleccionado.asStateFlow()
+
+    fun seleccionarRadio(metros: Int) {
+        if (metros in radiosDisponibles) _radioMetros.value = metros
+    }
 
     fun alternarCategoria(categoria: String) {
         val nuevaCategoria = categoria.takeUnless { it == _categoriaSeleccionada.value }

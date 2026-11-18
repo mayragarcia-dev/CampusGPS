@@ -1,5 +1,6 @@
 package com.garcia.campusgps.ui
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -13,6 +14,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapType
 import com.google.maps.android.compose.MapUiSettings
@@ -30,6 +32,7 @@ fun MapaUbicacion(
     lugares: List<LugarConDistancia>,
     seleccionado: Int?,
     masCercanoId: Int?,
+    radioMetros: Int,
     solicitudReencuadre: Int,
     modifier: Modifier = Modifier
 ) {
@@ -39,6 +42,7 @@ fun MapaUbicacion(
     val posicionActual = (estado as? UbicacionUi.Lista)?.posicion
     val puntoActual = posicionActual?.let { LatLng(it.latitud, it.longitud) } ?: centroCampusTecsup
     val marcadorActual = rememberUpdatedMarkerState(position = puntoActual)
+    val colorRadio = MaterialTheme.colorScheme.primary
     var mapaCargado by remember { mutableStateOf(false) }
 
     LaunchedEffect(posicionActual, mapaCargado, seleccionado) {
@@ -63,6 +67,15 @@ fun MapaUbicacion(
             zoomControlsEnabled = false
         )
     ) {
+        if (posicionActual != null) {
+            Circle(
+                center = puntoActual,
+                radius = radioMetros.toDouble(),
+                fillColor = colorRadio.copy(alpha = 0.15f),
+                strokeColor = colorRadio,
+                strokeWidth = 3f
+            )
+        }
         val iconoLugar = remember {
             BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
         }

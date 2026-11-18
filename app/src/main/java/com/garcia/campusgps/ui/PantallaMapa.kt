@@ -47,10 +47,12 @@ import com.garcia.campusgps.viewmodel.MapaViewModel
 @Composable
 fun PantallaMapa(viewModel: MapaViewModel) {
     val context = LocalContext.current
-    val alturaCompacta = LocalConfiguration.current.screenHeightDp < 560
+    val alturaCompacta = LocalConfiguration.current.screenHeightDp < 620
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val lugares by viewModel.lugaresVisibles.collectAsStateWithLifecycle()
     val categoriaSeleccionada by viewModel.categoriaSeleccionada.collectAsStateWithLifecycle()
+    val radioMetros by viewModel.radioMetros.collectAsStateWithLifecycle()
+    val lugaresDentroDelRadio by viewModel.lugaresDentroDelRadio.collectAsStateWithLifecycle()
     val seleccionado by viewModel.seleccionado.collectAsStateWithLifecycle()
     val masCercano by viewModel.masCercano.collectAsStateWithLifecycle()
     val masCercanoVisible = masCercano?.let { cercano ->
@@ -105,6 +107,7 @@ fun PantallaMapa(viewModel: MapaViewModel) {
                     lugares = lugares,
                     seleccionado = seleccionado,
                     masCercanoId = masCercanoVisible?.lugar?.id,
+                    radioMetros = radioMetros,
                     solicitudReencuadre = solicitudReencuadre,
                     modifier = if (alturaCompacta) {
                         Modifier.fillMaxWidth().height(180.dp)
@@ -162,8 +165,30 @@ fun PantallaMapa(viewModel: MapaViewModel) {
                         )
                     }
                 }
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Radio de cercanía", style = MaterialTheme.typography.labelMedium)
+                    Row(
+                        modifier = Modifier.selectableGroup(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        viewModel.radiosDisponibles.forEach { metros ->
+                            FilterChip(
+                                selected = metros == radioMetros,
+                                onClick = { viewModel.seleccionarRadio(metros) },
+                                label = { Text("$metros m") }
+                            )
+                        }
+                    }
+                }
                 ListaLugares(
                     lugares = lugares,
+                    lugaresDentroDelRadio = lugaresDentroDelRadio,
                     seleccionado = seleccionado,
                     onClick = ::seleccionarLugar,
                     modifier = Modifier.fillMaxWidth().height(220.dp)

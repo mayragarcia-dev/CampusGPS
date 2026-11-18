@@ -32,6 +32,7 @@ import com.garcia.campusgps.util.formatearDistancia
 @Composable
 fun ListaLugares(
     lugares: List<LugarConDistancia>,
+    lugaresDentroDelRadio: Set<Int>,
     seleccionado: Int?,
     onClick: (Int) -> Unit,
     modifier: Modifier = Modifier
@@ -64,6 +65,13 @@ fun ListaLugares(
                     Column(Modifier.weight(1f)) {
                         Text(lugar.nombre, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                         Text(lugar.categoria, style = MaterialTheme.typography.bodySmall, color = colores.onSurfaceVariant)
+                        if (lugar.id in lugaresDentroDelRadio) {
+                            Text(
+                                "Dentro del radio",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colores.primary
+                            )
+                        }
                     }
                     Text(
                         text = metros?.let(::formatearDistancia) ?: "Sin calcular",
