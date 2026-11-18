@@ -33,6 +33,7 @@ fun MapaUbicacion(
     seleccionado: Int?,
     masCercanoId: Int?,
     radioMetros: Int,
+    permisoUbicacion: Boolean,
     solicitudReencuadre: Int,
     modifier: Modifier = Modifier
 ) {
@@ -59,11 +60,14 @@ fun MapaUbicacion(
         modifier = modifier,
         cameraPositionState = camara,
         onMapLoaded = { mapaCargado = true },
-        properties = MapProperties(mapType = MapType.NORMAL),
+        properties = MapProperties(
+            isMyLocationEnabled = permisoUbicacion,
+            mapType = MapType.NORMAL
+        ),
         uiSettings = MapUiSettings(
             compassEnabled = false,
             mapToolbarEnabled = false,
-            myLocationButtonEnabled = false,
+            myLocationButtonEnabled = permisoUbicacion,
             zoomControlsEnabled = false
         )
     ) {

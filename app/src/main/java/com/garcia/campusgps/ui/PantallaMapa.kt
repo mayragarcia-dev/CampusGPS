@@ -1,6 +1,7 @@
 package com.garcia.campusgps.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,6 +30,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -37,11 +39,22 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.garcia.campusgps.model.TipoError
 import com.garcia.campusgps.model.UbicacionUi
 import com.garcia.campusgps.util.formatearDistancia
 import com.garcia.campusgps.viewmodel.MapaViewModel
+
+private val permisosUbicacion = arrayOf(
+    Manifest.permission.ACCESS_FINE_LOCATION,
+    Manifest.permission.ACCESS_COARSE_LOCATION
+)
+
+private fun Context.tienePermisoUbicacion(): Boolean = permisosUbicacion.any { permiso ->
+    ContextCompat.checkSelfPermission(this, permiso) == PackageManager.PERMISSION_GRANTED
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,7 +72,12 @@ fun PantallaMapa(viewModel: MapaViewModel) {
         lugares.firstOrNull { it.lugar.id == cercano.id }
     }
     var solicitudReencuadre by remember { mutableIntStateOf(0) }
+    var permisoUbicacion by remember { mutableStateOf(context.tienePermisoUbicacion()) }
     val error = estado as? UbicacionUi.Error
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        permisoUbicacion = context.tienePermisoUbicacion()
+    }
 
     fun seleccionarLugar(id: Int) {
         if (id == seleccionado) solicitudReencuadre++
@@ -68,20 +86,18 @@ fun PantallaMapa(viewModel: MapaViewModel) {
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { resultados ->
-        if (resultados.values.any { it }) viewModel.buscar()
+    ) {
+        permisoUbicacion = context.tienePermisoUbicacion()
+        if (permisoUbicacion) viewModel.buscar()
         else viewModel.permisoDenegado()
     }
 
     fun solicitarUbicacion() {
-        val permisos = arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        )
-        if (permisos.any { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }) {
+        permisoUbicacion = context.tienePermisoUbicacion()
+        if (permisoUbicacion) {
             viewModel.buscar()
         } else {
-            permissionLauncher.launch(permisos)
+            permissionLauncher.launch(permisosUbicacion)
         }
     }
 
@@ -108,6 +124,7 @@ fun PantallaMapa(viewModel: MapaViewModel) {
                     seleccionado = seleccionado,
                     masCercanoId = masCercanoVisible?.lugar?.id,
                     radioMetros = radioMetros,
+                    permisoUbicacion = permisoUbicacion,
                     solicitudReencuadre = solicitudReencuadre,
                     modifier = if (alturaCompacta) {
                         Modifier.fillMaxWidth().height(180.dp)
